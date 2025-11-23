@@ -1,0 +1,43 @@
+@baseUrl = http://localhost:5274
+
+### Get alle workouts
+GET {{baseUrl}}/api/workouts
+
+### Get workout by ID
+GET {{baseUrl}}/api/workouts/1
+
+### Create nieuwe workout - Bench Press
+POST {{baseUrl}}/api/workouts
+Content-Type: application/json
+
+{
+    "name": "Squat",
+    "reps": 5,
+    "weight": 34
+}
+
+### Create nieuwe workout - Deadlift
+POST {{baseUrl}}/api/workouts
+Content-Type: application/json
+
+{
+    "name": "Deadlift",
+    "reps": 5,
+    "weight": 140
+}
+
+### Create nieuwe workout - Squat
+POST {{baseUrl}}/api/workouts
+Content-Type: application/json
+
+{
+    "name": "Squat",
+    "reps": 10,
+    "weight": 100
+}
+
+### Delete workout
+DELETE {{baseUrl}}/api/workouts/2
+
+### Get workout die niet bestaat (test 404)
+GET {{baseUrl}}/api/workouts/999
