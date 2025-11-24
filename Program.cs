@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WorkoutApi.Data;
 using WorkoutApi.Models;
+using WorkoutApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,9 @@ builder.Services.AddSwaggerGen();
 // Add Database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=workouts.db"));
+
+// Add WorkoutService
+builder.Services.AddScoped<WorkoutService>();
 
 var app = builder.Build();
 
@@ -26,7 +30,9 @@ if (app.Environment.IsDevelopment())
 // GET alle workouts
 app.MapGet("/api/workouts", async (AppDbContext db) =>
 {
-    var workouts = await db.Workouts.ToListAsync();
+    var workouts = await db.Workouts
+        .OrderByDescending(w => w.Date)
+        .ToListAsync();
     return Results.Ok(workouts);
 });
 
@@ -37,13 +43,11 @@ app.MapGet("/api/workouts/{id}", async (int id, AppDbContext db) =>
     return workout is not null ? Results.Ok(workout) : Results.NotFound();
 });
 
-// POST nieuwe workout
-app.MapPost("/api/workouts", async (Workout workout, AppDbContext db) =>
+// POST nieuwe workout (met automatische PR detectie)
+app.MapPost("/api/workouts", async (Workout workout, WorkoutService service) =>
 {
-    workout.Date = DateTime.Now;
-    db.Workouts.Add(workout);
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/workouts/{workout.Id}", workout);
+    var created = await service.AddWorkoutAsync(workout);
+    return Results.Created($"/api/workouts/{created.Id}", created);
 });
 
 // PUT update workout
@@ -72,14 +76,45 @@ app.MapDelete("/api/workouts/{id}", async (int id, AppDbContext db) =>
     return Results.NoContent();
 });
 
-// GET Personal Records per exercise
+// GET Personal Records
 app.MapGet("/api/workouts/prs", async (AppDbContext db) =>
 {
     var prs = await db.Workouts
         .Where(w => w.IsPersonalRecord)
-        .OrderBy(w => w.Name)
+        .OrderByDescending(w => w.Date)
         .ToListAsync();
     return Results.Ok(prs);
+});
+
+// GET workouts van laatste 7 dagen
+app.MapGet("/api/workouts/recent", async (WorkoutService service) =>
+{
+    var workouts = await service.GetWorkoutsLastWeekAsync();
+    return Results.Ok(workouts);
+});
+
+// GET workouts gefilterd op exercise naam
+app.MapGet("/api/workouts/exercise/{name}", async (string name, AppDbContext db) =>
+{
+    var workouts = await db.Workouts
+        .Where(w => w.Name.ToLower() == name.ToLower())
+        .OrderByDescending(w => w.Date)
+        .ToListAsync();
+    return Results.Ok(workouts);
+});
+
+// GET statistieken voor een exercise
+app.MapGet("/api/stats/{exerciseName}", async (string exerciseName, WorkoutService service) =>
+{
+    var stats = await service.GetStatsForExerciseAsync(exerciseName);
+    return Results.Ok(stats);
+});
+
+// GET lijst van alle unieke exercise namen
+app.MapGet("/api/exercises", async (WorkoutService service) =>
+{
+    var exercises = await service.GetUniqueExerciseNamesAsync();
+    return Results.Ok(exercises);
 });
 
 app.Run();

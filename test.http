@@ -1,19 +1,39 @@
 @baseUrl = http://localhost:5274
 
-### Get alle workouts
+### Get alle workouts (gesorteerd op datum)
 GET {{baseUrl}}/api/workouts
 
 ### Get workout by ID
 GET {{baseUrl}}/api/workouts/1
 
-### Create nieuwe workout - Bench Press
+### Create nieuwe workout - Bench Press 80kg (eerste keer = automatisch PR)
 POST {{baseUrl}}/api/workouts
 Content-Type: application/json
 
 {
-    "name": "Squat",
-    "reps": 5,
-    "weight": 34
+    "name": "Bench Press",
+    "reps": 8,
+    "weight": 80
+}
+
+### Create nieuwe workout - Bench Press 85kg (hoger = automatisch PR!)
+POST {{baseUrl}}/api/workouts
+Content-Type: application/json
+
+{
+    "name": "Bench Press",
+    "reps": 8,
+    "weight": 85
+}
+
+### Create nieuwe workout - Bench Press 82kg (lager = geen PR)
+POST {{baseUrl}}/api/workouts
+Content-Type: application/json
+
+{
+    "name": "Bench Press",
+    "reps": 10,
+    "weight": 82
 }
 
 ### Create nieuwe workout - Deadlift
@@ -36,8 +56,31 @@ Content-Type: application/json
     "weight": 100
 }
 
+### Get alleen Personal Records
+GET {{baseUrl}}/api/workouts/prs
+
+### Get workouts van laatste 7 dagen
+GET {{baseUrl}}/api/workouts/recent
+
+### Get alle Bench Press workouts
+GET {{baseUrl}}/api/workouts/exercise/Bench Press
+
+### Get statistieken voor Bench Press
+GET {{baseUrl}}/api/stats/Bench Press
+
+### Get lijst van alle exercises
+GET {{baseUrl}}/api/exercises
+
+### Update workout
+PUT {{baseUrl}}/api/workouts/1
+Content-Type: application/json
+
+{
+    "name": "Bench Press",
+    "reps": 8,
+    "weight": 90,
+    "isPersonalRecord": true
+}
+
 ### Delete workout
 DELETE {{baseUrl}}/api/workouts/2
-
-### Get workout die niet bestaat (test 404)
-GET {{baseUrl}}/api/workouts/999
