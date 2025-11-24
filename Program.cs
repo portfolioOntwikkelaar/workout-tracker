@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using WorkoutApi.Data;
 using WorkoutApi.Models;
 using WorkoutApi.Services;
+using WorkoutApi.Validators;
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Add WorkoutService
 builder.Services.AddScoped<WorkoutService>();
+
+// Add FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<CreateWorkoutValidator>();
 
 var app = builder.Build();
 
@@ -43,26 +48,58 @@ app.MapGet("/api/workouts/{id}", async (int id, AppDbContext db) =>
     return workout is not null ? Results.Ok(workout) : Results.NotFound();
 });
 
-// POST nieuwe workout (met automatische PR detectie)
-app.MapPost("/api/workouts", async (Workout workout, WorkoutService service) =>
+// POST nieuwe workout (met validatie en automatische PR detectie)
+app.MapPost("/api/workouts", async (CreateWorkoutDto dto, WorkoutService service, IValidator<CreateWorkoutDto> validator) =>
 {
-    var created = await service.AddWorkoutAsync(workout);
-    return Results.Created($"/api/workouts/{created.Id}", created);
+    var validationResult = await validator.ValidateAsync(dto);
+    if (!validationResult.IsValid)
+    {
+        var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+        return Results.BadRequest(ApiResponse<Workout>.ErrorResponse("Validatie gefaald", errors));
+    }
+
+    try
+    {
+        var created = await service.AddWorkoutAsync(dto);
+        return Results.Ok(ApiResponse<Workout>.SuccessResponse(
+            created,
+            created.IsPersonalRecord ? "🎉 Nieuwe PR!" : "Workout toegevoegd"
+        ));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ApiResponse<Workout>.ErrorResponse(
+            "Fout bij toevoegen workout",
+            new List<string> { ex.Message }
+        ));
+    }
 });
 
-// PUT update workout
-app.MapPut("/api/workouts/{id}", async (int id, Workout updatedWorkout, AppDbContext db) =>
+// PUT update workout (met validatie)
+app.MapPut("/api/workouts/{id}", async (int id, UpdateWorkoutDto dto, WorkoutService service, IValidator<UpdateWorkoutDto> validator) =>
 {
-    var workout = await db.Workouts.FindAsync(id);
-    if (workout is null) return Results.NotFound();
+    var validationResult = await validator.ValidateAsync(dto);
+    if (!validationResult.IsValid)
+    {
+        var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+        return Results.BadRequest(ApiResponse<Workout>.ErrorResponse("Validatie gefaald", errors));
+    }
 
-    workout.Name = updatedWorkout.Name;
-    workout.Reps = updatedWorkout.Reps;
-    workout.Weight = updatedWorkout.Weight;
-    workout.IsPersonalRecord = updatedWorkout.IsPersonalRecord;
+    try
+    {
+        var updated = await service.UpdateWorkoutAsync(id, dto);
+        if (updated is null)
+            return Results.NotFound(ApiResponse<Workout>.ErrorResponse("Workout niet gevonden"));
 
-    await db.SaveChangesAsync();
-    return Results.Ok(workout);
+        return Results.Ok(ApiResponse<Workout>.SuccessResponse(updated, "Workout updated"));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ApiResponse<Workout>.ErrorResponse(
+            "Fout bij updaten workout",
+            new List<string> { ex.Message }
+        ));
+    }
 });
 
 // DELETE workout

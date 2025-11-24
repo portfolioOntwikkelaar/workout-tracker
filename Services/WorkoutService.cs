@@ -13,9 +13,15 @@ public class WorkoutService
         _db = db;
     }
 
-    public async Task<Workout> AddWorkoutAsync(Workout workout)
+    public async Task<Workout> AddWorkoutAsync(CreateWorkoutDto dto)
     {
-        workout.Date = DateTime.Now;
+        var workout = new Workout
+        {
+            Name = dto.Name.Trim(),
+            Reps = dto.Reps,
+            Weight = dto.Weight,
+            Date = DateTime.Now
+        };
 
         // Check of dit een PR is
         workout.IsPersonalRecord = await IsPersonalRecordAsync(workout);
@@ -23,6 +29,20 @@ public class WorkoutService
         _db.Workouts.Add(workout);
         await _db.SaveChangesAsync();
 
+        return workout;
+    }
+
+    public async Task<Workout?> UpdateWorkoutAsync(int id, UpdateWorkoutDto dto)
+    {
+        var workout = await _db.Workouts.FindAsync(id);
+        if (workout is null) return null;
+
+        workout.Name = dto.Name.Trim();
+        workout.Reps = dto.Reps;
+        workout.Weight = dto.Weight;
+        workout.IsPersonalRecord = dto.IsPersonalRecord;
+
+        await _db.SaveChangesAsync();
         return workout;
     }
 

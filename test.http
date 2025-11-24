@@ -82,5 +82,32 @@ Content-Type: application/json
     "isPersonalRecord": true
 }
 
-### Delete workout
-DELETE {{baseUrl}}/api/workouts/2
+### TEST VALIDATIE - Lege naam (moet falen)
+POST {{baseUrl}}/api/workouts
+Content-Type: application/json
+
+{
+    "name": "",
+    "reps": 8,
+    "weight": 80
+}
+
+### TEST VALIDATIE - Negatief gewicht (moet falen)
+POST {{baseUrl}}/api/workouts
+Content-Type: application/json
+
+{
+    "name": "Test",
+    "reps": 5,
+    "weight": -250
+}
+
+### TEST VALIDATIE - Teveel reps (moet falen)
+POST {{baseUrl}}/api/workouts
+Content-Type: application/json
+
+{
+    "name": "Bench Press",
+    "reps": 9999,
+    "weight": 80
+}
