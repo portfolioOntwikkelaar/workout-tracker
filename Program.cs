@@ -21,9 +21,22 @@ builder.Services.AddScoped<WorkoutService>();
 // Add FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<CreateWorkoutValidator>();
 
+// Add CORS voor React frontend
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReact", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 // Configure middleware
+app.UseCors("AllowReact");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
