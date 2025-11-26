@@ -1,3 +1,4 @@
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 using Microsoft.EntityFrameworkCore;
 using WorkoutApi.Data;
 using WorkoutApi.Models;
@@ -6,10 +7,6 @@ using WorkoutApi.Validators;
 using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 // Add Database (PostgreSQL in productie, SQLite lokaal)
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
@@ -25,7 +22,6 @@ else
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlite("Data Source=workouts.db"));
 }
-
 // Add WorkoutService
 builder.Services.AddScoped<WorkoutService>();
 
