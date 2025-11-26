@@ -11,9 +11,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add Database
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=workouts.db"));
+// Add Database (PostgreSQL in productie, SQLite lokaal)
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(connectionString))
+{
+    // Railway PostgreSQL
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
+else
+{
+    // Lokaal SQLite
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlite("Data Source=workouts.db"));
+}
 
 // Add WorkoutService
 builder.Services.AddScoped<WorkoutService>();
@@ -26,9 +37,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://*.vercel.app" // Vercel deployment
+        )
+        .SetIsOriginAllowedToAllowWildcardSubdomains()
+        .AllowAnyHeader()
+        .AllowAnyMethod();
     });
 });
 
