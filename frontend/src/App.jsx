@@ -4,7 +4,7 @@ import ProgressChart from './components/ProgressChart';
 import FilterPanel from './components/FilterPanel';
 import './App.css';
 
-const API_URL = 'http://localhost:5274/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5274/api';
 
 function App() {
   const [workouts, setWorkouts] = useState([]);
