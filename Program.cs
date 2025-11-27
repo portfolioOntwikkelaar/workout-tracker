@@ -1,4 +1,3 @@
-using Npgsql.EntityFrameworkCore.PostgreSQL;
 using Microsoft.EntityFrameworkCore;
 using WorkoutApi.Data;
 using WorkoutApi.Models;
@@ -8,11 +7,18 @@ using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add services
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 // Add Database (PostgreSQL in productie, SQLite lokaal)
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-if (!string.IsNullOrEmpty(connectionString))
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(databaseUrl))
 {
-    // Railway PostgreSQL
+    // Parse Railway PostgreSQL URL
+    var uri = new Uri(databaseUrl);
+    var connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={uri.UserInfo.Split(':')[0]};Password={uri.UserInfo.Split(':')[1]};SSL Mode=Require;Trust Server Certificate=true";
+
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(connectionString));
 }
@@ -22,6 +28,7 @@ else
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlite("Data Source=workouts.db"));
 }
+
 // Add WorkoutService
 builder.Services.AddScoped<WorkoutService>();
 
@@ -46,20 +53,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Auto-migrate database on startup (voor productie)
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-}
-
 // Configure middleware
 app.UseCors("AllowReact");
 
-// Swager voor API documentatie
-app.UseSwagger();
-app.UseSwaggerUI();
-
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 // === ENDPOINTS ===
 
