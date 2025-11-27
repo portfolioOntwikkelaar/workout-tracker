@@ -56,11 +56,10 @@ using (var scope = app.Services.CreateScope())
 // Configure middleware
 app.UseCors("AllowReact");
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swager voor API documentatie
+app.UseSwagger();
+app.UseSwaggerUI();
+
 
 // === ENDPOINTS ===
 
