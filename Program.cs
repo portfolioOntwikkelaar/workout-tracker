@@ -189,5 +189,11 @@ app.MapGet("/api/exercises", async (WorkoutService service) =>
     var exercises = await service.GetUniqueExerciseNamesAsync();
     return Results.Ok(exercises);
 });
+// ---- AUTOMATIC DATABASE MIGRATION ----
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
 
 app.Run();
