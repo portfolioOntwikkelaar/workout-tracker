@@ -6,7 +6,7 @@ using WorkoutApi.Validators;
 using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
-
+//derde poging
 // Railway port configuratie
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
@@ -15,49 +15,52 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add Database (PostgreSQL in productie, SQLite lokaal)
+// Database configuratie
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    // Parse Railway PostgreSQL URL
+    // Railway PostgreSQL URL parser
     var uri = new Uri(databaseUrl);
-    var connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={uri.UserInfo.Split(':')[0]};Password={uri.UserInfo.Split(':')[1]};SSL Mode=Require;Trust Server Certificate=true";
+    var connectionString =
+    $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={uri.UserInfo.Split(':')[0]};Password={uri.UserInfo.Split(':')[1]};SSL Mode=Require;Trust Server Certificate=true";
 
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString)
+    );
 }
 else
 {
-    // Lokaal SQLite
+    // Lokale SQLite
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlite("Data Source=workouts.db"));
+    options.UseSqlite("Data Source=workouts.db")
+    );
 }
 
-// Add WorkoutService
+// Services
 builder.Services.AddScoped<WorkoutService>();
 
-// Add FluentValidation
+// FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<CreateWorkoutValidator>();
 
-// Add CORS voor React frontend
+// CORS voor localhost + Vercel wildcard
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "https://*.vercel.app" // Vercel deployment
-        )
-        .SetIsOriginAllowedToAllowWildcardSubdomains()
-        .AllowAnyHeader()
-        .AllowAnyMethod();
+        policy
+    .SetIsOriginAllowed(origin =>
+    origin.StartsWith("http://localhost") ||
+    origin.EndsWith(".vercel.app")
+    )
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// Configure middleware
+// Middleware
 app.UseCors("AllowReact");
 
 if (app.Environment.IsDevelopment())
@@ -72,8 +75,8 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/api/workouts", async (AppDbContext db) =>
 {
     var workouts = await db.Workouts
-        .OrderByDescending(w => w.Date)
-        .ToListAsync();
+    .OrderByDescending(w => w.Date)
+    .ToListAsync();
     return Results.Ok(workouts);
 });
 
@@ -84,7 +87,7 @@ app.MapGet("/api/workouts/{id}", async (int id, AppDbContext db) =>
     return workout is not null ? Results.Ok(workout) : Results.NotFound();
 });
 
-// POST nieuwe workout (met validatie en automatische PR detectie)
+// POST nieuwe workout
 app.MapPost("/api/workouts", async (CreateWorkoutDto dto, WorkoutService service, IValidator<CreateWorkoutDto> validator) =>
 {
     var validationResult = await validator.ValidateAsync(dto);
@@ -98,20 +101,20 @@ app.MapPost("/api/workouts", async (CreateWorkoutDto dto, WorkoutService service
     {
         var created = await service.AddWorkoutAsync(dto);
         return Results.Ok(ApiResponse<Workout>.SuccessResponse(
-            created,
-            created.IsPersonalRecord ? "🎉 Nieuwe PR!" : "Workout toegevoegd"
+        created,
+        created.IsPersonalRecord ? "🎉 Nieuwe PR!" : "Workout toegevoegd"
         ));
     }
     catch (Exception ex)
     {
         return Results.BadRequest(ApiResponse<Workout>.ErrorResponse(
-            "Fout bij toevoegen workout",
-            new List<string> { ex.Message }
+        "Fout bij toevoegen workout",
+        new List<string> { ex.Message }
         ));
     }
 });
 
-// PUT update workout (met validatie)
+// PUT update workout
 app.MapPut("/api/workouts/{id}", async (int id, UpdateWorkoutDto dto, WorkoutService service, IValidator<UpdateWorkoutDto> validator) =>
 {
     var validationResult = await validator.ValidateAsync(dto);
@@ -132,8 +135,8 @@ app.MapPut("/api/workouts/{id}", async (int id, UpdateWorkoutDto dto, WorkoutSer
     catch (Exception ex)
     {
         return Results.BadRequest(ApiResponse<Workout>.ErrorResponse(
-            "Fout bij updaten workout",
-            new List<string> { ex.Message }
+        "Fout bij updaten workout",
+        new List<string> { ex.Message }
         ));
     }
 });
@@ -149,47 +152,48 @@ app.MapDelete("/api/workouts/{id}", async (int id, AppDbContext db) =>
     return Results.NoContent();
 });
 
-// GET Personal Records
+// GET PRs
 app.MapGet("/api/workouts/prs", async (AppDbContext db) =>
 {
     var prs = await db.Workouts
-        .Where(w => w.IsPersonalRecord)
-        .OrderByDescending(w => w.Date)
-        .ToListAsync();
+    .Where(w => w.IsPersonalRecord)
+    .OrderByDescending(w => w.Date)
+    .ToListAsync();
     return Results.Ok(prs);
 });
 
-// GET workouts van laatste 7 dagen
+// GET laatste 7 dagen
 app.MapGet("/api/workouts/recent", async (WorkoutService service) =>
 {
     var workouts = await service.GetWorkoutsLastWeekAsync();
     return Results.Ok(workouts);
 });
 
-// GET workouts gefilterd op exercise naam
+// GET workouts per exercise
 app.MapGet("/api/workouts/exercise/{name}", async (string name, AppDbContext db) =>
 {
     var workouts = await db.Workouts
-        .Where(w => w.Name.ToLower() == name.ToLower())
-        .OrderByDescending(w => w.Date)
-        .ToListAsync();
+    .Where(w => w.Name.ToLower() == name.ToLower())
+    .OrderByDescending(w => w.Date)
+    .ToListAsync();
     return Results.Ok(workouts);
 });
 
-// GET statistieken voor een exercise
+// GET stats
 app.MapGet("/api/stats/{exerciseName}", async (string exerciseName, WorkoutService service) =>
 {
     var stats = await service.GetStatsForExerciseAsync(exerciseName);
     return Results.Ok(stats);
 });
 
-// GET lijst van alle unieke exercise namen
+// GET unieke exercise namen
 app.MapGet("/api/exercises", async (WorkoutService service) =>
 {
     var exercises = await service.GetUniqueExerciseNamesAsync();
     return Results.Ok(exercises);
 });
-// ---- AUTOMATIC DATABASE MIGRATION ----
+
+// Auto-migratie
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
